@@ -2,11 +2,27 @@
 int code1 = 0;
 int code2 = 0;
 
+int halfDelay = 50;
+
+// example: colorCodeToBaseTen[1] = 17 means the color code of 1 gets mapped to 17
+int *colorCodeToBaseTen;
+int maxColorCode = 13;
+
+void fillColorCodeArray() {
+	colorCodeToBaseTen = malloc(sizeof(int) * maxColorCode);
+	// encode colors as base ten numbers by filling the colorCodeToBaseTen array
+	for(int i = 0; i < maxColorCode; i++) {
+		colorCodeToBaseTen[i] = -1;
+	}
+	// IMPORTANT the codes should be between 0 and 9 so that they don't step on each other's toes in base-ten land
+	colorCodeToBaseTen[9] = 17;
+	// etc TODO
+}
+
 // asciiToCodeword[3] = 20429 means the char of ascii 3 is mapped to codeword 20429
 int *asciiToCodeword;
 int asciiTableSize = 128;
 int numberOfBitsInCodewords = 7;
-int numberOfColorsPerCodeWord;
 int maxHammingDistance = 3;
 
 void generateCodewords() {
@@ -14,7 +30,6 @@ void generateCodewords() {
 	// based on numberOfBitsInCodewords,
 	// fill asciiToCodeword will evenly-spaced codewords.
 	// codewords cannot be greater than 2 ^ numberOfBitsInCodewords.
-	// can take each ascii character and multiply by 25 to have an array of size 3125. Each 	code word then has room for 25 neighbors, with only 15 possible neighbors using base 5.
 	int maxCodeWord = pow(2, numberOfBitsInCodewords);
 	int distanceBetweenCodewords = maxCodeWord / asciiTableSize;
 	for(int i = 0; i < asciiTableSize; i++) {
@@ -23,8 +38,7 @@ void generateCodewords() {
 }
 
 void setup() {
-	numberOfColorsPerCodeWord = ?;
-	fillColorCodeArray()
+	fillColorCodeArray();
 	generateCodewords();
 }
 
@@ -33,10 +47,6 @@ int hammingDistance(int num1, int num2) {
 }
 
 int indexOfNearestCodeWord(int *code) {
-	// search through asciiToCodeword to find the codeword
-	// that is closest to the given code.
-	// return the index of the codeword.
-	// “nearest” means smallest hamming distance
 	int indexOfGreater = 0;
 	while(asciiToCodeword[indexOfGreater] < *code && indexOfGreater < asciiTableSize) {
 		indexOfGreater++;
@@ -54,23 +64,6 @@ int indexOfNearestCodeWord(int *code) {
 
 void outputCharacter(char character) {
 	Serial.println(character);
-}
-
-int base = 5; // the number of colors we use for communication
-
-// example: colorCodeToBaseTen[1] = 17 means the color code of 1 gets mapped to 17
-int *colorCodeToBaseTen;
-int maxColorCode = 13;
-
-void fillColorCodeArray() {
-	colorCodeToBaseTen = malloc(sizeof(int) * maxColorCode);
-	// encode colors as base ten numbers by filling the colorCodeToBaseTen array
-	for(int i = 0; i < maxColorCode; i++) {
-		colorCodeToBaseTen[i] = -1;
-	}
-	// IMPORTANT the codes should be between 0 and 9 so that they don't step on each other's toes in base-ten land
-	colorCodeToBaseTen[9] = 17;
-	// etc TODO
 }
 
 void updateCode(int *code) {
@@ -113,4 +106,5 @@ void loop() {
 		}
 	}
 	alternator = !alternator
+	delay(halfDelay);
 }
