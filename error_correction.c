@@ -69,7 +69,8 @@ void outputCharacter(char character) {
 void updateCode(int *code) {
 	// update code according to read color
 	// this is the only place where colors are converted to binary
-	int baseTenColorCode = colorCodeToBaseTen(*code);
+	int colorCode = sensor.getColor();
+	int baseTenColorCode = colorCodeToBaseTen[colorCode];
 	if(baseTenColorCode < 0) {
 		Serial.println("color code not in colorCodeToBaseTen: " + *code);
 		return;
