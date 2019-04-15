@@ -1,6 +1,6 @@
 #include "CORE.h"
 
-int fullDelay = 100;
+int fullDelay = 10000;
 
 char *message = "hello";
 
@@ -8,7 +8,6 @@ char *message = "hello";
 long *asciiToCodeword;
 long asciiTableSize = 128;
 // if this is 7, there will be distance 1 between all the codewords since 128 = 2^7
-//int numberOfBitsInCodewords = 13;
 int numColorsPerChar = 6;
 int colorIndex = 0;
 
@@ -25,9 +24,7 @@ long myPow(int num, int exponent) {
 
 void generateCodewords() {
   asciiToCodeword = malloc(sizeof(int) * asciiTableSize);
-  // based on numberOfBitsInCodewords,
-  // fill asciiToCodeword will evenly-spaced codewords.
-  // codewords cannot be greater than 2 ^ numberOfBitsInCodewords.
+  // fill asciiToCodeword will evenly-spaced codewords
   long minCodeWord = myPow(5, numColorsPerChar);
   long maxCodeWord = myPow(5, numColorsPerChar + 1);
   long distanceBetweenCodewords = (maxCodeWord - minCodeWord) / asciiTableSize;
@@ -100,7 +97,6 @@ void setup() {
   generateCodewords();
   getColorsToSend();
   Serial.println("setup complete");
-  Serial.println(baseTenToBaseFive(1313));
 }
 
 void loop() {
