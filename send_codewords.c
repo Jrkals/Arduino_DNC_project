@@ -47,7 +47,7 @@ void fillColorCodeArray() {
   // IMPORTANT the codes should be between 0 and 9 so that they don't step on each other's toes in base-ten land
   baseTenToColorCode[0] = beacon.BLUE;
   baseTenToColorCode[1] = beacon.RED;
-  baseTenToColorCode[2] = beacon.WHITE;
+  baseTenToColorCode[2] = beacon.OFF;
   baseTenToColorCode[3] = beacon.GREEN;
   baseTenToColorCode[4] = beacon.YELLOW;
 }
