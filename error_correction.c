@@ -6,11 +6,10 @@ int halfDelay = 500;
 int colorBase = 5;
 int *colorCodeToColorBase;
 int maxColorCode = 32;
-int halfDelay = 1000;
 long *asciiToCodeword;
 long asciiTableSize = 128;
 int numColorsPerChar = 6;
-long maxHammingDistance = 0;
+long maxHammingDistance = 1;
 
 long myPow(int num, int exponent) {
   long answer = 1;
@@ -52,25 +51,26 @@ long baseTenToColorBase(long baseTen) {
 void generateCodewords() {
   asciiToCodeword = malloc(sizeof(long) * asciiTableSize);
   // fill asciiToCodeword will evenly-spaced codewords
-  long minBaseTenCodeWord = myPow(5, numColorsPerChar);
-  long maxBaseTenCodeWord = myPow(5, numColorsPerChar + 1) - 1;
+  long minBaseTenCodeWord = myPow(5, numColorsPerChar - 1);
+  long maxBaseTenCodeWord = myPow(5, numColorsPerChar) - 1;
   Serial.println("min base 10 codeword:");
   Serial.println(minBaseTenCodeWord);
   Serial.println("max base 10 codeword:");
   Serial.println(maxBaseTenCodeWord);
-  long distanceBetweenCodewords = (maxCodeWord - minCodeWord) / asciiTableSize;
+  long distanceBetweenCodewords = (maxBaseTenCodeWord - minBaseTenCodeWord) / asciiTableSize;
   long baseTenCodeword;
   long colorBaseCodeword;
   for(int i = 0; i < asciiTableSize; i++) {
-    Serial.println("base 10 codeword:");
-    baseTenCodeword = minCodeWord + (distanceBetweenCodewords * i);
-    Serial.println(baseTenCodeword);
+    baseTenCodeword = minBaseTenCodeWord + (distanceBetweenCodewords * i);
+//    Serial.println("base 10 codeword:");
+//    Serial.println(baseTenCodeword);
     colorBaseCodeword = baseTenToColorBase(baseTenCodeword);
-    Serial.println("color base codeword:");
-    Serial.println(colorBaseCodeword);
+//    Serial.println("color base codeword:");
+//    Serial.println(colorBaseCodeword);
     asciiToCodeword[i] = colorBaseCodeword;
   }
 }
+// 4111002
 
 void updateCode(long *code) {
   int colorCode = color.getColorNumber();
@@ -84,7 +84,7 @@ void updateCode(long *code) {
   (*code) += colorBaseColorCode;
   // after adding another digit, the code might be too long
   // we'll shorten it be "erasing" the digit that is too large
-  long eraser = 1 << numColorsPerChar;
+  long eraser = myPow(10, numColorsPerChar);
   for(int i = 0; i < colorBase; i++) {
     (*code) = (*code) % eraser;
   }
@@ -92,12 +92,20 @@ void updateCode(long *code) {
 
 int hammingDistance(long num1, long num2) {
   int distance = 0;
-  while(num1 > 0) {
+  while(num1 > 0 && num2 > 0) {
     if((num1 % 10) != (num2 % 10)) {
       distance++;
     }
     num1 /= 10;
     num2 /= 10;
+  }
+  while(num1 > 0) {
+    num1 /= 10;
+    distance++;
+  }
+  while(num2 > 0) {
+    num2 /= 10;
+    distance++;
   }
   return distance;
 }
@@ -121,7 +129,7 @@ boolean codeSearch(long *code) {
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(4800);
   fillColorCodeArray();
   generateCodewords();
   color.colorSetup(color.PASSIVE, color.SIXTY);
