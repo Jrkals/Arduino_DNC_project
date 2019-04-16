@@ -2,14 +2,13 @@
 
 CORE_COLOR_BEACON beacon;
 
-int fullDelay = 400;
-char *message = "h";
+int fullDelay = 250;
+char *message = "return (int) (num % 10);";
 int colorBase = 4;
 int *colorBaseToColorCode;
 int maxColorCode = 32;
 long *asciiToCodeword;
-long asciiTableSize = 128;
-// since arduino longs are only 32 bits, 8 is the max
+long asciiTableSize = 173;
 int numColorsPerChar = 8;
 
 long myPow(int num, int exponent) {
@@ -37,9 +36,9 @@ void fillColorCodeArray() {
   colorBaseToColorCode = malloc(sizeof(int) * colorBase);
   colorBaseToColorCode[0] = beacon.BLUE;
   colorBaseToColorCode[1] = beacon.RED;
-  colorBaseToColorCode[2] = beacon.WHITE;
-  colorBaseToColorCode[3] = beacon.GREEN;
-  colorBaseToColorCode[4] = beacon.YELLOW;
+  colorBaseToColorCode[2] = beacon.OFF;
+  colorBaseToColorCode[3] = beacon.YELLOW;
+  //colorBaseToColorCode[4] = beacon.YELLOW;
 }
 
 long baseTenToColorBase(long baseTen) {
@@ -78,23 +77,30 @@ void generateCodewords() {
   }
 }
 
+int msgInd = 0;
 void setup() {
   Serial.begin(9600);
   fillColorCodeArray();
   generateCodewords();
+  while(message[msgInd] != '\0') {
+    Serial.print(message[msgInd]);
+    msgInd++;
+  }
+  msgInd = 0;
+  Serial.println();
   Serial.println("setup complete");
 }
 
 int charIndex = 0;
-int colorIndex = 0;
+int colorIndex = numColorsPerChar - 1;
 
-long charBeingSent;
+int charBeingSent;
 long codewordBeingSent;
 int colorBaseNumToSend;
 
 void loop() {
-  if(colorIndex >= numColorsPerChar) {
-    colorIndex = 0;
+  if(colorIndex < 0) {
+    colorIndex = numColorsPerChar - 1;
     charIndex++;
   }
   if(message[charIndex] == '\0') {
@@ -105,6 +111,7 @@ void loop() {
   Serial.println(codewordBeingSent);
   colorBaseNumToSend = digitAtIndex(colorIndex, codewordBeingSent);
   beacon.setColor(colorBaseToColorCode[colorBaseNumToSend]);
-  colorIndex++;
+  //Serial.print(colorBaseNumToSend);
+  colorIndex--;
   delay(fullDelay);
 }

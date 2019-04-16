@@ -2,12 +2,12 @@
 
 CORE_COLOR_SENSOR color;
 
-int halfDelay = 200;
+int halfDelay = 125;
 int colorBase = 4;
 int *colorCodeToColorBase;
 int maxColorCode = 32;
 long *asciiToCodeword;
-long asciiTableSize = 128;
+long asciiTableSize = 173;
 // since arduino longs are only 32 bits, 8 is the max
 int numColorsPerChar = 8;
 long maxHammingDistance = 1;
@@ -31,8 +31,8 @@ void fillColorCodeArray() {
   colorCodeToColorBase[3] = 0; // blue
   colorCodeToColorBase[4] = 0; // blue
   colorCodeToColorBase[10] = 1; // red
-  colorCodeToColorBase[1] = 2; // white
-  //colorCodeToColorBase[0] = 3; // off (unreliable, should be removed)
+//  colorCodeToColorBase[1] = 2; // white
+  colorCodeToColorBase[0] = 2; // off (unreliable, should be removed)
   colorCodeToColorBase[9] = 3; // yellow
 }
 
@@ -61,6 +61,8 @@ void generateCodewords() {
   long distanceBetweenCodewords = (maxBaseTenCodeWord - minBaseTenCodeWord) / asciiTableSize;
   long baseTenCodeword;
   long colorBaseCodeword;
+  Serial.println("sizeof(unsigned long long int)");
+  Serial.println(sizeof(unsigned long long int));
   for(int i = 0; i < asciiTableSize; i++) {
     baseTenCodeword = minBaseTenCodeWord + (distanceBetweenCodewords * i);
 //    Serial.println("base 10 codeword:");
@@ -115,10 +117,12 @@ boolean codeSearch(long *code) {
   }
 //  Serial.println("searching with code:");
 //  Serial.println(*code);
-  for(int i = 0; i < asciiTableSize; i++) {
-    if(hammingDistance(*code, asciiToCodeword[i]) <= maxHammingDistance) {
-      outputCharacter((char) i);
-      return true;
+  for(int aHammingDistance = 0; aHammingDistance <= maxHammingDistance; aHammingDistance++) {
+    for(int i = 0; i < asciiTableSize; i++) {
+      if(hammingDistance(*code, asciiToCodeword[i]) <= aHammingDistance) {
+        outputCharacter((char) i);
+        return true;
+      }
     }
   }
   return false;
