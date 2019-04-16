@@ -1,110 +1,86 @@
 #include "CORE.h"
 
-int fullDelay = 10000;
-
-char *message = "hello";
-
-// asciiToCodeword[3] = 20429 means the char of ascii 3 is mapped to codeword 20429
-long *asciiToCodeword;
-long asciiTableSize = 128;
-// if this is 7, there will be distance 1 between all the codewords since 128 = 2^7
-int numColorsPerChar = 6;
-int colorIndex = 0;
-
 CORE_COLOR_BEACON beacon;
 
-long myPow(int num, int exponent) {
-  long answer = 1;
-  while(exponent > 0) {
-    answer *= num;
-    exponent -= 1;
+int fullDelay = 1000;
+char *message = "h";
+int colorBase = 5;
+int *colorBaseToColorCode;
+int maxColorCode = 32;
+long *asciiToCodeword;
+long asciiTableSize = 128;
+int numColorsPerChar = 6;
+
+int digitAtIndex(int index, long num) {
+  while(index > 0) {
+    num = num / 10;
+    index--;
   }
-  return answer;
+  return (int) (num % 10);
+}
+
+void fillColorCodeArray() {
+  if(colorBase > 9) {
+    Serial.println("Error: colorBase cannot exceed 9");
+    return;
+  }
+  colorBaseToColorCode = malloc(sizeof(int) * colorBase);
+  colorBaseToColorCode[0] = beacon.BLUE;
+  colorBaseToColorCode[1] = beacon.RED;
+  colorBaseToColorCode[2] = beacon.WHITE;
+  colorBaseToColorCode[3] = beacon.GREEN;
+  colorBaseToColorCode[4] = beacon.YELLOW;
 }
 
 void generateCodewords() {
-  asciiToCodeword = malloc(sizeof(int) * asciiTableSize);
+  asciiToCodeword = malloc(sizeof(long) * asciiTableSize);
   // fill asciiToCodeword will evenly-spaced codewords
-  long minCodeWord = myPow(5, numColorsPerChar);
-  long maxCodeWord = myPow(5, numColorsPerChar + 1);
+  long minBaseTenCodeWord = myPow(5, numColorsPerChar);
+  long maxBaseTenCodeWord = myPow(5, numColorsPerChar + 1) - 1;
+  Serial.println("min base 10 codeword:");
+  Serial.println(minBaseTenCodeWord);
+  Serial.println("max base 10 codeword:");
+  Serial.println(maxBaseTenCodeWord);
   long distanceBetweenCodewords = (maxCodeWord - minCodeWord) / asciiTableSize;
-//  Serial.println(maxCodeWord);
+  long baseTenCodeword;
+  long colorBaseCodeword;
   for(int i = 0; i < asciiTableSize; i++) {
-//    Serial.println("codeword:");
-//    Serial.println(distanceBetweenCodewords * i);
-    asciiToCodeword[i] = minCodeWord + (distanceBetweenCodewords * i);
-  }
-}
-
-int *baseTenToColorCode;
-int maxBaseTenCode = 5;
-
-void fillColorCodeArray() {
-  baseTenToColorCode = malloc(sizeof(int) * maxBaseTenCode);
-  for(int i = 0; i < maxBaseTenCode; i++) {
-    baseTenToColorCode[i] = -1;
-  }
-  // IMPORTANT the codes should be between 0 and 9 so that they don't step on each other's toes in base-ten land
-  baseTenToColorCode[0] = beacon.BLUE;
-  baseTenToColorCode[1] = beacon.RED;
-  baseTenToColorCode[2] = beacon.OFF;
-  baseTenToColorCode[3] = beacon.GREEN;
-  baseTenToColorCode[4] = beacon.YELLOW;
-}
-
-int *colorsToSend;
-
-long baseTenToBaseFive(long baseTen) {
-  long baseFive = 0;
-  int magnitude = 0;
-  while(baseTen > 0){
-    long remainder = baseTen % 5;
-    baseTen /= 5;
-    baseFive += myPow(10, magnitude) * remainder;
-    magnitude++;
-  }
-  return baseFive;
-}
-
-void getColorsToSend() {
-  colorsToSend = malloc(sizeof(int) * 500);
-  int i = 0;
-  int colorsToSendIndex = 0;
-  while(message[i] != '\0') {
-    char charToSend = message[i];
-    long baseTenCodeword = asciiToCodeword[charToSend];
+    Serial.println("base 10 codeword:");
+    baseTenCodeword = minCodeWord + (distanceBetweenCodewords * i);
     Serial.println(baseTenCodeword);
-    long codeword = baseTenToBaseFive(baseTenCodeword);
-    Serial.println(codeword);
-    // now need to convert codeword to color codes and add each color code to the array
-    int charCodeIndex = colorsToSendIndex + numColorsPerChar;
-    while(codeword > 0) {
-      int nextDigit = codeword % 10;
-      codeword /= 10;
-      int nextColorCode = baseTenToColorCode[nextDigit];
-      colorsToSend[charCodeIndex] = nextColorCode;
-      charCodeIndex--;
-    }
-    colorsToSendIndex += numColorsPerChar;
-    i++;
+    colorBaseCodeword = baseTenToColorBase(baseTenCodeword);
+    Serial.println("color base codeword:");
+    Serial.println(colorBaseCodeword);
+    asciiToCodeword[i] = colorBaseCodeword;
   }
-  colorsToSend[colorsToSendIndex] = -1;
 }
 
 void setup() {
   Serial.begin(9600);
   fillColorCodeArray();
   generateCodewords();
-  getColorsToSend();
   Serial.println("setup complete");
 }
 
+int charIndex = 0;
+int colorIndex = 0;
+
+long charBeingSent;
+long codewordBeingSent;
+int colorBaseNumToSend;
+
 void loop() {
-  //Serial.println("in loop");
-  if(colorsToSend[colorIndex] == -1) {
+  if(colorIndex >= numColorsPerChar) {
     colorIndex = 0;
+    charIndex++;
   }
-  beacon.setColor(colorsToSend[colorIndex]);
+  if(message[charIndex] == '\0') {
+    charIndex = 0;
+  }
+  charBeingSent = message[charIndex];
+  codewordBeingSent = asciiToCodeword[charBeingSent];
+  colorBaseNumToSend = digitAtIndex(colorIndex, codewordBeingSent);
+  beacon.setColor(colorBaseToColorCode[colorBaseNumToSend]);
   colorIndex++;
   delay(fullDelay);
 }

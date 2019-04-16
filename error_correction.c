@@ -2,40 +2,15 @@
 
 CORE_COLOR_SENSOR color;
 
-//// these will be updated as colors are read. They’re basically “running” codes
-//long code1 = 0;
-//long code2 = 0;
-long *codes;
-
-int halfDelay = 1000;
-
-// example: colorCodeToBaseTen[1] = 17 means the color code of 1 gets mapped to 17
-int *colorCodeToBaseTen;
+int halfDelay = 500;
+int colorBase = 5;
+int *colorCodeToColorBase;
 int maxColorCode = 32;
-
-void fillColorCodeArray() {
-  colorCodeToBaseTen = malloc(sizeof(int) * maxColorCode);
-  // encode colors as base ten numbers by filling the colorCodeToBaseTen array
-  // first, put -1 everywhere so we can tell if we lookup an invalid color code
-  for(int i = 0; i < maxColorCode; i++) {
-    colorCodeToBaseTen[i] = -1;
-  }
-  // IMPORTANT the codes should be between 0 and 9 so that they don't step on each other's toes in base-ten land
-  colorCodeToBaseTen[3] = 0; // blue
-  colorCodeToBaseTen[4] = 0; // blue
-  colorCodeToBaseTen[10] = 1; // red
-  colorCodeToBaseTen[1] = 2; // white
-  colorCodeToBaseTen[0] = 3; // off
-  colorCodeToBaseTen[9] = 4; // yellow
-}
-
-// asciiToCodeword[3] = 20429 means the char of ascii 3 is mapped to codeword 20429
+int halfDelay = 1000;
 long *asciiToCodeword;
 long asciiTableSize = 128;
 int numColorsPerChar = 6;
-int colorIndex = 0;
-long maxHammingDistance = 100;
-long maxBaseFiveCodeword;
+long maxHammingDistance = 0;
 
 long myPow(int num, int exponent) {
   long answer = 1;
@@ -46,157 +21,129 @@ long myPow(int num, int exponent) {
   return answer;
 }
 
-long baseTenToBaseFive(long baseTen) {
-  long baseFive = 0;
+void fillColorCodeArray() {
+  colorCodeToColorBase = malloc(sizeof(int) * maxColorCode);
+  // encode colors as base ten numbers by filling the colorCodeToColorBase array
+  // first, put -1 everywhere so we can tell if we lookup an invalid color code
+  for(int i = 0; i < maxColorCode; i++) {
+    colorCodeToColorBase[i] = -1;
+  }
+  colorCodeToColorBase[3] = 0; // blue
+  colorCodeToColorBase[4] = 0; // blue
+  colorCodeToColorBase[10] = 1; // red
+  colorCodeToColorBase[1] = 2; // white
+  colorCodeToColorBase[0] = 3; // off (unreliable, should be removed)
+  colorCodeToColorBase[9] = 4; // yellow
+}
+
+long baseTenToColorBase(long baseTen) {
+  long numInColorBase = 0;
   int magnitude = 0;
+  long remainder;
   while(baseTen > 0){
-    long remainder = baseTen % 5;
-    baseTen /= 5;
-    baseFive += myPow(10, magnitude) * remainder;
+    remainder = baseTen % colorBase;
+    baseTen /= colorBase;
+    numInColorBase += myPow(10, magnitude) * remainder;
     magnitude++;
   }
-  return baseFive;
+  return numInColorBase;
 }
 
 void generateCodewords() {
-  asciiToCodeword = malloc(sizeof(int) * asciiTableSize);
+  asciiToCodeword = malloc(sizeof(long) * asciiTableSize);
   // fill asciiToCodeword will evenly-spaced codewords
-  long minCodeWord = myPow(5, numColorsPerChar);
-  long maxCodeWord = myPow(5, numColorsPerChar + 1);
-  maxBaseFiveCodeword = baseTenToBaseFive(maxCodeWord);
+  long minBaseTenCodeWord = myPow(5, numColorsPerChar);
+  long maxBaseTenCodeWord = myPow(5, numColorsPerChar + 1) - 1;
+  Serial.println("min base 10 codeword:");
+  Serial.println(minBaseTenCodeWord);
+  Serial.println("max base 10 codeword:");
+  Serial.println(maxBaseTenCodeWord);
   long distanceBetweenCodewords = (maxCodeWord - minCodeWord) / asciiTableSize;
-//  Serial.println(maxCodeWord);
+  long baseTenCodeword;
+  long colorBaseCodeword;
   for(int i = 0; i < asciiTableSize; i++) {
-//    Serial.println("codeword:");
-//    Serial.println(distanceBetweenCodewords * i);
-    asciiToCodeword[i] = minCodeWord + (distanceBetweenCodewords * i);
+    Serial.println("base 10 codeword:");
+    baseTenCodeword = minCodeWord + (distanceBetweenCodewords * i);
+    Serial.println(baseTenCodeword);
+    colorBaseCodeword = baseTenToColorBase(baseTenCodeword);
+    Serial.println("color base codeword:");
+    Serial.println(colorBaseCodeword);
+    asciiToCodeword[i] = colorBaseCodeword;
   }
+}
+
+void updateCode(long *code) {
+  int colorCode = color.getColorNumber();
+  int colorBaseColorCode = colorCodeToColorBase[colorCode];
+  if(colorBaseColorCode < 0) {
+    Serial.println("color code not in colorCodeToBaseTen:");
+    Serial.println(colorCode);
+    colorBaseColorCode = 1;
+  }
+  (*code) *= 10;
+  (*code) += colorBaseColorCode;
+  // after adding another digit, the code might be too long
+  // we'll shorten it be "erasing" the digit that is too large
+  long eraser = 1 << numColorsPerChar;
+  for(int i = 0; i < colorBase; i++) {
+    (*code) = (*code) % eraser;
+  }
+}
+
+int hammingDistance(long num1, long num2) {
+  int distance = 0;
+  while(num1 > 0) {
+    if((num1 % 10) != (num2 % 10)) {
+      distance++;
+    }
+    num1 /= 10;
+    num2 /= 10;
+  }
+  return distance;
+}
+
+void outputCharacter(char theChar) {
+  Serial.println("found character:");
+  Serial.println(theChar);
+}
+
+boolean codeSearch(long *code) {
+  updateCode(code);
+  Serial.println("searching with code:");
+  Serial.println(*code);
+  for(int i = 0; i < asciiTableSize; i++) {
+    if(hammingDistance(*code, asciiToCodeword[i]) <= maxHammingDistance) {
+      outputCharacter((char) i);
+      return true;
+    }
+  }
+  return false;
 }
 
 void setup() {
   Serial.begin(9600);
-  codes = malloc(sizeof(long) * numColorsPerChar);
-  for(int i = 0; i < numColorsPerChar; i++) {
-      codes[i] = 0;
-  }
   fillColorCodeArray();
   generateCodewords();
   color.colorSetup(color.PASSIVE, color.SIXTY);
   Serial.println("setup complete");
 }
 
-long hammingDistance(long num1, long num2) {
-  return abs(num1 - num2);
-}
+boolean alternator = false;
+// these will be updated as colors are read. They’re basically “running” codes
+long code1 = 0;
+long code2 = 0;
 
-int indexOfNearestCodeWord(long *code) {
-  int indexOfGreater = 0;
-  while(asciiToCodeword[indexOfGreater] < *code && indexOfGreater < asciiTableSize) {
-    indexOfGreater++;
-  }
-  if(indexOfGreater == asciiTableSize) {
-    return indexOfGreater - 1;
-  }
-  int indexOfLesser;
-  if(indexOfGreater == 0) {
-    indexOfLesser = 0;
-  }else{
-    indexOfLesser = indexOfGreater - 1;
-  }
-  if(abs(asciiToCodeword[indexOfGreater] - *code) < abs(*code - asciiToCodeword[indexOfLesser])) {
-    return indexOfGreater;
-  } else {
-    return indexOfLesser;
-  }
-}
-
-void outputCharacter(char character) {
-  Serial.println(character);
-}
-
-void updateCode(long *code) {
-  // update code according to read color
-  // this is the only place where colors are converted to binary
-  if ((int)(log(*code) / log(5)) >= numColorsPerChar){
-    *code = 0;
-  }
-  int colorCode = color.getColorNumber();
-  int baseTenColorCode = colorCodeToBaseTen[colorCode];
-  if(baseTenColorCode < 0) {
-    Serial.println("color code not in colorCodeToBaseTen:");
-    Serial.println(colorCode);
-    baseTenColorCode = 1;
-  }
-  (*code) *= 10;
-  (*code) += baseTenColorCode;
-  //(*code) = (*code) % maxBaseFiveCodeword;
-}
-
-long baseFiveToBaseTen(long baseFive) {
-  long baseTen = 0;
-  int magnitude = 0;
-  while(baseFive > 0){
-    long remainder = baseFive % 10;
-    baseFive /= 10;
-    baseTen += myPow(5, magnitude) * remainder;
-    magnitude++;
-  }
-  return baseTen;
-}
-
-// returns true if it finds a codeword
-// and false if it does not
-int codeSearch(long *code) {
-  Serial.println(*code);
-  updateCode(code);
-  long baseTenCode = baseFiveToBaseTen(*code);
-  int nearestCodewordIndex = indexOfNearestCodeWord(baseTenCode);
-  long nearestCodeword = asciiToCodeword[nearestCodewordIndex];
-//  Serial.println(nearestCodeword);
-  //Serial.println(hammingDistance(baseTenCode, nearestCodeword));
-  if (hammingDistance(baseTenCode, nearestCodeword) <= maxHammingDistance) {
-    char character = (char) nearestCodewordIndex;
-    Serial.println("character:");
-    Serial.println(nearestCodewordIndex);
-    //outputCharacter(character);
-    return 1;
-  }
-  return 0;
-}
-
-int codeIndex = 0;
-int numCodesToUpdate = 1;
-int readsSinceLastFind = 0;
 void loop() {
-//  if (alternator) {
-//    if (codeSearch(&code1)) {
-//      code1 = 0;
-//      code2 = 0;
-//    }
-//  } else {
-//    if (codeSearch(&code2)) {
-//      code1 = 0;
-//      code2 = 0;
-//    }
-//  }
-  for(int i = 0; i < numCodesToUpdate; i++) {
-    if(codeSearch(&(codes[i]))){
-      readsSinceLastFind = -1;
-      numCodesToUpdate = 0;
-      for(int j = 0; j < numColorsPerChar; j++) {
-        codes[j] = 0;
-      }
-      break;
+  if (alternator) {
+    if (codeSearch(&code1)) {
+      code1 = 0;
+      code2 = 0;
     }
-  }
-//  for(int i = 0; i < numCodesToUpdate; i++) {
-//    if(readsSinceLastFind > 0 && (readsSinceLastFind + i) % numColorsPerChar == 1) {
-//      codes[i] = 0;
-//    }
-//  }
-//  readsSinceLastFind++;
-  if (numCodesToUpdate < numColorsPerChar) {
-    numCodesToUpdate++;
+  } else {
+    if (codeSearch(&code2)) {
+      code1 = 0;
+      code2 = 0;
+    }
   }
   delay(halfDelay);
 }
