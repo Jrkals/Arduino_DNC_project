@@ -2,14 +2,15 @@
 
 CORE_COLOR_BEACON beacon;
 
-int fullDelay = 1000;
+int fullDelay = 400;
 char *message = "h";
-int colorBase = 5;
+int colorBase = 4;
 int *colorBaseToColorCode;
 int maxColorCode = 32;
 long *asciiToCodeword;
 long asciiTableSize = 128;
-int numColorsPerChar = 6;
+// since arduino longs are only 32 bits, 8 is the max
+int numColorsPerChar = 8;
 
 long myPow(int num, int exponent) {
   long answer = 1;
@@ -57,8 +58,8 @@ long baseTenToColorBase(long baseTen) {
 void generateCodewords() {
   asciiToCodeword = malloc(sizeof(long) * asciiTableSize);
   // fill asciiToCodeword will evenly-spaced codewords
-  long minBaseTenCodeWord = myPow(5, numColorsPerChar - 1);
-  long maxBaseTenCodeWord = myPow(5, numColorsPerChar) - 1;
+  long minBaseTenCodeWord = myPow(colorBase, numColorsPerChar - 1);
+  long maxBaseTenCodeWord = myPow(colorBase, numColorsPerChar) - 1;
   Serial.println("min base 10 codeword:");
   Serial.println(minBaseTenCodeWord);
   Serial.println("max base 10 codeword:");

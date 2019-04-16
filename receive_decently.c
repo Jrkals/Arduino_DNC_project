@@ -2,15 +2,14 @@
 
 CORE_COLOR_SENSOR color;
 
-int halfDelay = 200;
+int halfDelay = 250;
 int colorBase = 4;
 int *colorCodeToColorBase;
 int maxColorCode = 32;
 long *asciiToCodeword;
 long asciiTableSize = 128;
-// since arduino longs are only 32 bits, 8 is the max
-int numColorsPerChar = 8;
-long maxHammingDistance = 1;
+int numColorsPerChar = 6;
+long maxHammingDistance = 0;
 
 long myPow(int num, int exponent) {
   long answer = 1;
@@ -77,8 +76,8 @@ void updateCode(long *code) {
   int colorCode = color.getColorNumber();
   int colorBaseColorCode = colorCodeToColorBase[colorCode];
   if(colorBaseColorCode < 0) {
-//    Serial.println("color code not in colorCodeToBaseTen:");
-//    Serial.println(colorCode);
+    Serial.println("color code not in colorCodeToBaseTen:");
+    Serial.println(colorCode);
     colorBaseColorCode = 1;
   }
   (*code) *= 10;
@@ -104,8 +103,8 @@ int hammingDistance(long num1, long num2) {
 }
 
 void outputCharacter(char theChar) {
-//  Serial.println("found character:");
-  Serial.print(theChar);
+  Serial.println("found character:");
+  Serial.println(theChar);
 }
 
 boolean codeSearch(long *code) {
@@ -133,7 +132,7 @@ void setup() {
 }
 
 boolean alternator = false;
-// these will be updated as colors are read. Theyâ€™re basically â€œrunningâ€ codes
+// these will be updated as colors are read. They’re basically “running” codes
 long code1 = 0;
 long code2 = 0;
 
